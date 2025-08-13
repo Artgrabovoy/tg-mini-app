@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Статусы</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;margin:16px}
+.row{display:flex;gap:8px;margin-bottom:12px}
+input{flex:1;padding:8px}button{padding:8px 12px}
+table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px}
+small{color:#666}
+</style>
+<h3>Мой статус</h3>
+<div class="row">
+  <input id="status" placeholder="Например: я в комнате">
+  <button id="save">Сохранить</button>
+</div>
+<h3>Список</h3>
+<table id="list"><thead><tr><th>Пользователь</th><th>Статус</th><th>Обновлено</th></tr></thead><tbody></tbody></table>
+<script>
+const tg=window.Telegram?.WebApp; tg?.ready(); tg?.expand();
+const initData=tg?.initData||''; const el=document.getElementById('status');
+async function refresh(){
+  const r=await fetch('/api/list'); const d=await r.json(); if(!d.ok)return;
+  const tb=document.querySelector('#list tbody'); tb.innerHTML='';
+  for(const row of d.rows){
+    const name=[row.first_name,row.last_name].filter(Boolean).join(' ')||('@'+(row.username||row.user_id));
+    const tr=document.createElement('tr'); const dt=new Date(row.updated_at).toLocaleString();
+    tr.innerHTML=`<td>${name}</td><td>${row.status||''}</td><td><small>${dt}</small></td>`; tb.appendChild(tr);
+  }
+}
+document.getElementById('save').onclick=async()=>{
+  const status=el.value.trim(); if(!status)return;
+  const r=await fetch('/api/status',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status,initData})}); const d=await r.json();
+  if(d.ok){el.value=''; refresh();} else alert('Ошибка: '+d.error);
+};
+refresh(); setInterval(refresh,5000);
+</script>
